@@ -59,7 +59,8 @@ def main(
     snapshot_gap,
     cpu,
 ):
-    valid_modes = ["vanilla", "her"]
+    #TODO: 1. Added mode "her+icm", gotta go through with it
+    valid_modes = ["vanilla", "her", "her+icm"]
     valid_archi = [
         "mlp",
         "cnn",
@@ -113,7 +114,10 @@ def main(
         policy_kwargs=dict(hidden_dim=hidden_dim, n_layers=n_layers),
         log_dir=exp_dir,
     )
-    if mode == "her":
+
+    #TODO: 2. replaced "mode == 'her'" with "mode in ["her","her+icm"]"
+
+    if mode in ["her","her+icm"]:
         variant["replay_buffer_kwargs"].update(
             dict(
                 fraction_goals_rollout_goals=1
@@ -121,6 +125,11 @@ def main(
                 fraction_goals_env_goals=0,
             )
         )
+
+    if mode in ["her+icm", "icm"]:
+        #TODO: Add here ICM specific actions
+        pass
+
     set_seed(seed)
 
     setup_logger_kwargs = {

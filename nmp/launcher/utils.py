@@ -18,6 +18,11 @@ ARCHI = {
     "cnn": {"vanilla": CNN, "tanhgaussian": TanhGaussianCNNPolicy},
 }
 
+#TODO: Add functions
+# get_icm_encoder_network
+# get_forward_network
+# get_inverse_network
+# in relation to lines 70-81 of laucher/sac.py
 
 def archi_to_network(archi_name, function_type):
     allowed_function_type = ["vanilla", "tanhgaussian"]
@@ -124,3 +129,34 @@ def get_q_network(archi, kwargs, env, classification=False):
         raise ValueError(f"Unknown network archi: {archi}")
 
     return qf_class, kwargs
+
+def get_icm_encoder_network(archi, kwargs, env):
+    action_dim = env.action_space.low.size
+
+    kwargs["hidden_sizes"] = [kwargs.pop("hidden_dim")] * kwargs.pop("n_layers")
+
+    if archi != "pointnet":
+        raise ValueError(f"ICM can only handle pointnet, not {archi}")
+
+    robot_props = env.robot_props
+    obs_indices = env.obs_indices
+    obstacles_dim = env.obstacles_dim
+    coordinate_frame = env.coordinate_frame
+
+    kwargs["output_size"] = action_dim
+    obstacle_point_dim = env.obstacle_point_dim
+    kwargs["q_action_dim"] = 0
+    kwargs["robot_props"] = robot_props
+    kwargs["elem_dim"] = obstacle_point_dim
+    kwargs["input_indices"] = obs_indices
+    kwargs["hidden_activation"] = F.elu
+    kwargs["coordinate_frame"] = coordinate_frame
+    # kwargs["hidden_activation"] = torch.sin
+
+    return PointNet, kwargs
+
+def get_forward_network():
+    return
+
+def get_inverse_network():
+    return
