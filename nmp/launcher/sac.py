@@ -15,7 +15,7 @@ from rlkit.torch.sac.policies import MakeDeterministic
 from rlkit.torch.sac.sac import SACTrainer
 from rlkit.torch.torch_rl_algorithm import TorchBatchRLAlgorithm
 
-from nmp.curiosity.icm import ICMTrainer
+from nmp.curiosity.icmtrainer import ICMTrainer
 
 from nmp.launcher import utils
 
@@ -42,10 +42,10 @@ def get_networks(variant, expl_env):
     """
     Define Q networks and policy network
     """
-    #TODO: Add ICM networks
 
     qf_kwargs = variant["qf_kwargs"]
     policy_kwargs = variant["policy_kwargs"]
+    icm_kwargs = variant["icm_kwargs"]
     shared_base = None
 
     qf_class, qf_kwargs = utils.get_q_network(variant["archi"], qf_kwargs, expl_env)
@@ -68,18 +68,11 @@ def get_networks(variant, expl_env):
     print(f"Q function num parameters: {qf1.num_params()}")
     print(f"Policy num parameters: {policy.num_params()}")
 
-    #TODO: complete
-    # if variant["mode"] in ["her+icm", "icm"]:
-    #     icm_encoder_class, icm_encoder_kwargs = utils.get_icm_encoder_network(variant["archi"], icm_encoder_kwargs, expl_env)
-    #     forward_class, forward_kwargs = utils.get_forward_network(forward_kwargs, expl_env)
-    #     inverse_class, inverse_kwargs = utils.get_inverse_network(inverse_kwargs, expl_env)
-    # icm_encoder = icm_encoder_class(**icm_encoder_kwargs)
-    # forward =  forward_class(**forward_kwargs)
-    # inverse = inverse_class(**inverse_kwargs)
-    # nets.extend([icm_encoder,forward,inverse])
-    # print(f"ICM encoder num parameters: {icm_encoder.num_params()}")
-    # print(f"Forward model num parameters: {forward.num_params()}")
-    # print(f"Inverse model num parameters: {inverse.num_params()}")
+    if variant["mode"] in ["her+icm", "icm"]:
+        icm_class, icm_kwargs = utils.get_icm_encoder_network(icm_kwargs, expl_env)
+        icm = icm_class(**icm_kwargs)
+        nets.append(icm)
+        print(f"ICM num parameters: {icm.num_params()}")
 
     return nets
 
@@ -127,7 +120,6 @@ def sac(variant):
         )
 
     replay_buffer = get_replay_buffer(variant, expl_env)
-    #TODO: Add ICM networks
 
     nets = get_networks(
         variant, expl_env
@@ -146,7 +138,7 @@ def sac(variant):
             **variant["trainer_kwargs"],
         )
     if mode in ["icm", "her+icm"]:
-        qf1, qf2, target_qf1, target_qf2, policy, shared_base, icm_encoder, forward, inverse = nets
+        qf1, qf2, target_qf1, target_qf2, policy, shared_base, icm = nets
         trainer = ICMTrainer(
             env=eval_env,
             policy=policy,
@@ -154,9 +146,7 @@ def sac(variant):
             qf2=qf2,
             target_qf1=target_qf1,
             target_qf2=target_qf2,
-            icm_encoder=icm_encoder,
-            forward_model=forward,
-            inverse_model=inverse,
+            icm=icm,
             **variant["trainer_kwargs"],
         )
     if mode in ["her", "her+icm"]:

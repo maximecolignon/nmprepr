@@ -13,7 +13,7 @@ from nmp import settings
 @click.argument("exp-dir", type=str)
 @click.option("-s", "--seed", default=None, type=int)
 @click.option("-resume", "--resume/--no-resume", is_flag=True, default=False)
-@click.option("-mode", "--mode", default="her")
+@click.option("-mode", "--mode", default="her+icm")
 @click.option("-archi", "--archi", default="pointnet")
 @click.option("-epochs", "--epochs", default=3000, type=int)
 @click.option("-rscale", "--reward-scale", default=1, type=float)
@@ -59,8 +59,7 @@ def main(
     snapshot_gap,
     cpu,
 ):
-    #TODO: 1. Added mode "her+icm", gotta go through with it
-    valid_modes = ["vanilla", "her", "her+icm"]
+    valid_modes = ["vanilla", "her", "her+icm", "icm"]
     valid_archi = [
         "mlp",
         "cnn",
@@ -112,12 +111,11 @@ def main(
         ),
         qf_kwargs=dict(hidden_dim=hidden_dim, n_layers=n_layers),
         policy_kwargs=dict(hidden_dim=hidden_dim, n_layers=n_layers),
+        icm_kwargs=dict(hidden_dim=hidden_dim, n_layers=n_layers),
         log_dir=exp_dir,
     )
 
-    #TODO: 2. replaced "mode == 'her'" with "mode in ["her","her+icm"]"
-
-    if mode in ["her","her+icm"]:
+    if mode in ["her", "her+icm"]:
         variant["replay_buffer_kwargs"].update(
             dict(
                 fraction_goals_rollout_goals=1
@@ -128,7 +126,9 @@ def main(
 
     if mode in ["her+icm", "icm"]:
         #TODO: Add here ICM specific actions
-        pass
+        if archi != "pointnet":
+            raise Exception("ICM can only handle pointnet architecture")
+
 
     set_seed(seed)
 
