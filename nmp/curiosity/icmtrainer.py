@@ -22,6 +22,7 @@ class ICMTrainer(SACTrainer):
         icm,
         discount=0.99,
         reward_scale=1.0,
+        intrinsic_reward_scale=1.0,
         policy_lr=1e-3,
         qf_lr=1e-3,
         optimizer_class=optim.Adam,
@@ -44,6 +45,7 @@ class ICMTrainer(SACTrainer):
 
         self.beta = beta
         self.lmbda = lmbda
+        self.intrinsic_reward_scale = intrinsic_reward_scale
 
         super().__init__(
             env,
@@ -68,14 +70,10 @@ class ICMTrainer(SACTrainer):
             qf2_optimizer,
         )
 
-        self.policy_optimizer.add_param_group(self.icm.parameters())
-
-        # if add_param_group doesnt work, try this:
-        #
-        # self.policy_optimizer = optimizer_class(
-        #   list(self.policy.parameters()) + list(self.icm.parameters()),
-        #   lr=policy_lr,
-        # )
+        self.policy_optimizer = optimizer_class(
+          list(self.policy.parameters()) + list(self.icm.parameters()),
+          lr=policy_lr,
+        )
 
     def train_from_torch(self, batch):
         rewards = batch["rewards"]
@@ -95,6 +93,10 @@ class ICMTrainer(SACTrainer):
         next_h, next_h_pred, actions_pred = self.icm(actions, obs, next_obs)
         forward_loss = self.forward_criterion(next_h_pred, next_h)
         inverse_loss = self.inverse_criterion(actions, actions_pred)
+
+        intrinsic_reward = self.intrinsic_reward_scale*forward_loss
+        extrinsic_reward = rewards
+        rewards = extrinsic_reward + intrinsic_reward
 
         """
         Policy and Alpha Loss
@@ -214,16 +216,9 @@ class ICMTrainer(SACTrainer):
             self.eval_statistics["Inverse Loss"] = np.mean(ptu.get_numpy(inverse_loss))
             self.eval_statistics["Policy+ICM Loss"] = np.mean(ptu.get_numpy(policy_icm_loss))
             self.eval_statistics["ICM Grad Norm"] = ptu.get_numpy(norm_icm)
-
-            self.eval_statistics.update(
-                create_stats_ordered_dict("ICM next_h_pred", ptu.get_numpy(next_h_pred), )
-            )
-            self.eval_statistics.update(
-                create_stats_ordered_dict("ICM next_h", ptu.get_numpy(next_h), )
-            )
-            self.eval_statistics.update(
-                create_stats_ordered_dict("ICM actions_pred", ptu.get_numpy(actions_pred), )
-            )
+            with torch.no_grad():
+                self.eval_statistics["Mean Intrinsic Reward"] = ptu.get_numpy(intrinsic_reward.mean())
+                self.eval_statistics["Mean Extrinsic Reward"] = ptu.get_numpy(extrinsic_reward.mean())
             ###
 
             self.eval_statistics["Alpha"] = alpha.item()

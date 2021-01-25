@@ -17,6 +17,7 @@ from nmp import settings
 @click.option("-archi", "--archi", default="pointnet")
 @click.option("-epochs", "--epochs", default=3000, type=int)
 @click.option("-rscale", "--reward-scale", default=1, type=float)
+@click.option("-irscale", "--intrinsic-reward-scale", default=1, type=float)
 @click.option("-h-dim", "--hidden-dim", default=256, type=int)
 @click.option("-bs", "--batch-size", default=256, type=int)
 @click.option("-lr", "--learning-rate", default=3e-4, type=float)
@@ -45,6 +46,7 @@ def main(
     archi,
     epochs,
     reward_scale,
+    intrinsic_reward_scale,
     hidden_dim,
     batch_size,
     learning_rate,
@@ -126,6 +128,7 @@ def main(
 
     if mode in ["her+icm", "icm"]:
         #TODO: Add here ICM specific actions
+        variant['trainer_kwargs']['intrinsic_reward_scale'] = intrinsic_reward_scale
         if archi != "pointnet":
             raise Exception("ICM can only handle pointnet architecture")
 

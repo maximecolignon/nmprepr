@@ -12,7 +12,7 @@ from nmp.policy.tanh_gaussian import (
 )
 
 from nmp.curiosity.icm import ICM
-
+import rlkit.torch.pytorch_util as ptu
 
 ARCHI = {
     "mlp": {"vanilla": FlattenMlp, "tanhgaussian": TanhGaussianPolicy},

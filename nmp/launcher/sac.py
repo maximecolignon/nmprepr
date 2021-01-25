@@ -25,12 +25,11 @@ def get_replay_buffer(variant, expl_env):
     Define replay buffer specific to the mode
     """
     mode = variant["mode"]
-    if mode == "vanilla":
+    if mode in ["vanilla", "icm"]:
         replay_buffer = EnvReplayBuffer(
             env=expl_env, **variant["replay_buffer_kwargs"],
         )
-
-    elif mode == "her":
+    elif mode in ["her", "her+icm"]:
         replay_buffer = ObsDictRelabelingBuffer(
             env=expl_env, **variant["her"], **variant["replay_buffer_kwargs"]
         )
@@ -69,8 +68,8 @@ def get_networks(variant, expl_env):
     print(f"Policy num parameters: {policy.num_params()}")
 
     if variant["mode"] in ["her+icm", "icm"]:
-        icm_class, icm_kwargs = utils.get_icm_encoder_network(icm_kwargs, expl_env)
-        icm = icm_class(**icm_kwargs)
+        icm_class, icm_kwargs = utils.get_icm_network(icm_kwargs, expl_env)
+        icm = icm_class(**icm_kwargs).to(ptu.device)
         nets.append(icm)
         print(f"ICM num parameters: {icm.num_params()}")
 
@@ -82,10 +81,10 @@ def get_path_collector(variant, expl_env, eval_env, policy, eval_policy):
     Define path collector
     """
     mode = variant["mode"]
-    if mode == "vanilla":
+    if mode in ["vanilla", "icm"]:
         expl_path_collector = MdpPathCollector(expl_env, policy)
         eval_path_collector = MdpPathCollector(eval_env, eval_policy)
-    elif mode == "her":
+    elif mode in ["her", "her+icm"]:
         expl_path_collector = GoalConditionedPathCollector(
             expl_env,
             policy,
@@ -113,6 +112,14 @@ def sac(variant):
     archi = variant["archi"]
     if mode in ["her", "her+icm"]:
         variant["her"] = dict(
+            observation_key="observation",
+            desired_goal_key="desired_goal",
+            achieved_goal_key="achieved_goal",
+            representation_goal_key="representation_goal",
+        )
+
+    if mode in ["vanilla", "icm"]:
+        variant["vanilla"] = dict(
             observation_key="observation",
             desired_goal_key="desired_goal",
             achieved_goal_key="achieved_goal",
